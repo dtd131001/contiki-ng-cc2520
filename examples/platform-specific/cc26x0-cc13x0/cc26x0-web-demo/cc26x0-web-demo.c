@@ -70,6 +70,7 @@ PROCESS(cc26xx_web_demo_process, "CC26XX Web Demo");
 #define SENSOR_READING_RANDOM (CLOCK_SECOND << 4)
 
 struct ctimer batmon_timer;
+struct ctimer test_timer;
 
 #if BOARD_SENSORTAG
 struct ctimer bmp_timer, hdc_timer, tmp_timer, opt_timer, mpu_timer;
@@ -120,6 +121,9 @@ DEMO_SENSOR(batmon_temp, CC26XX_WEB_DEMO_SENSOR_BATMON_TEMP,
 DEMO_SENSOR(batmon_volt, CC26XX_WEB_DEMO_SENSOR_BATMON_VOLT,
             "Battery Volt", "battery-volt", "batmon_volt",
             CC26XX_WEB_DEMO_UNIT_VOLT);
+DEMO_SENSOR(test, CC26XX_WEB_DEMO_SENSOR_TEST,
+            "TEST", "TEST", "TEST",
+            "WHATEVER");
 
 #if CC26XX_WEB_DEMO_ADC_DEMO
 DEMO_SENSOR(adc_dio23, CC26XX_WEB_DEMO_SENSOR_ADC_DIO23,
@@ -482,6 +486,23 @@ get_batmon_reading(void *data)
 
   ctimer_set(&batmon_timer, next, get_batmon_reading, NULL);
 }
+
+static void get_test_reading(void *data)
+{
+  int value=3344;
+  char *buf;
+
+  if(test_reading.publish) {
+     // value=3344;
+      test_reading.raw = value;
+
+      buf = test_reading.converted;
+      memset(buf, 0, CC26XX_WEB_DEMO_CONVERTED_LEN);
+      snprintf(buf, CC26XX_WEB_DEMO_CONVERTED_LEN, "%d", value);
+    }
+      ctimer_set(&test_timer, 3, get_test_reading, NULL);
+  }
+
 /*---------------------------------------------------------------------------*/
 #if CC26XX_WEB_DEMO_ADC_DEMO
 static void
@@ -839,6 +860,7 @@ init_sensor_readings(void)
    * trigger periodic value updates
    */
   get_batmon_reading(NULL);
+  get_test_reading(NULL);
 
 #if BOARD_SENSORTAG
   init_bmp_reading(NULL);
@@ -857,6 +879,7 @@ init_sensors(void)
 
   list_add(sensor_list, &batmon_temp_reading);
   list_add(sensor_list, &batmon_volt_reading);
+  list_add(sensor_list, &test_reading);
 
 #if CC26XX_WEB_DEMO_ADC_DEMO
   list_add(sensor_list, &adc_dio23_reading);

@@ -153,6 +153,7 @@
 #define CC26XX_WEB_DEMO_SENSOR_MPU_GYRO_Y    13
 #define CC26XX_WEB_DEMO_SENSOR_MPU_GYRO_Z    14
 #define CC26XX_WEB_DEMO_SENSOR_ADC_DIO23     15
+#define CC26XX_WEB_DEMO_SENSOR_TEST          16
 /*---------------------------------------------------------------------------*/
 extern process_event_t cc26xx_web_demo_publish_event;
 extern process_event_t cc26xx_web_demo_config_loaded_event;

@@ -35,29 +35,22 @@
 #include "net/ipv6/uip.h"
 #include "net/ipv6/uip-ds6.h"
 #include "net/ipv6/uip-debug.h"
-#include "net/netstack.h"
-#include "simple-udp.h"
 
-#include "net/routing/routing.h"
+#include "simple-udp.h"
 
 #include <stdio.h>
 #include <string.h>
 
-#include "sys/log.h"
-#define LOG_MODULE "App"
-#define LOG_LEVEL LOG_LEVEL_INFO
-
 #define UDP_PORT 1234
-#define SERVICE_ID 190
 
-#define SEND_INTERVAL		(10 * CLOCK_SECOND)
+#define SEND_INTERVAL		(60 * CLOCK_SECOND)
 #define SEND_TIME		(random_rand() % (SEND_INTERVAL))
 
 static struct simple_udp_connection unicast_connection;
 
 /*---------------------------------------------------------------------------*/
-PROCESS(unicast_receiver_process, "Unicast receiver example process");
-AUTOSTART_PROCESSES(&unicast_receiver_process);
+PROCESS(sender_node_process, "Sender node process");
+AUTOSTART_PROCESSES(&sender_node_process);
 /*---------------------------------------------------------------------------*/
 static void
 receiver(struct simple_udp_connection *c,
@@ -68,28 +61,77 @@ receiver(struct simple_udp_connection *c,
          const uint8_t *data,
          uint16_t datalen)
 {
-  LOG_INFO("Received request '%.*s' from ", datalen, (char *) data);
-  LOG_INFO_6ADDR(sender_addr);
-  LOG_INFO_("\n");
-  printf("Data received from ");
-  uip_debug_ipaddr_print(sender_addr);
-  printf(" on port %d from port %d with length %d: '%s'\n",
-         receiver_port, sender_port, datalen, data);
-
+  printf("Sender received data on port %d from port %d with length %d\n",
+         receiver_port, sender_port, datalen);
 }
 /*---------------------------------------------------------------------------*/
-
-PROCESS_THREAD(unicast_receiver_process, ev, data)
+static void
+set_global_address(void)
 {
+  uip_ipaddr_t ipaddr;
+  int i;
+  uint8_t state;
+  const uip_ipaddr_t *default_prefix = uip_ds6_default_prefix();
+
+  uip_ip6addr_copy(&ipaddr, default_prefix);
+  uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
+  uip_ds6_addr_add(&ipaddr, 0, ADDR_AUTOCONF);
+
+  printf("IPv6 addresses: ");
+  for(i = 0; i < UIP_DS6_ADDR_NB; i++) {
+    state = uip_ds6_if.addr_list[i].state;
+    if(uip_ds6_if.addr_list[i].isused &&
+       (state == ADDR_TENTATIVE || state == ADDR_PREFERRED)) {
+      uip_debug_ipaddr_print(&uip_ds6_if.addr_list[i].ipaddr);
+      printf("\n");
+    }
+  }
+}
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(sender_node_process, ev, data)
+{
+  static struct etimer periodic_timer;
+  static struct etimer send_timer;
+  uip_ipaddr_t addr;
+  const uip_ipaddr_t *default_prefix;
+
   PROCESS_BEGIN();
 
-  NETSTACK_ROUTING.root_start();
+  set_global_address();
 
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
+
+  etimer_set(&periodic_timer, SEND_INTERVAL);
   while(1) {
-    PROCESS_WAIT_EVENT();
+
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
+    etimer_reset(&periodic_timer);
+    etimer_set(&send_timer, SEND_TIME);
+
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&send_timer));
+
+    default_prefix = uip_ds6_default_prefix();
+    uip_ip6addr_copy(&addr, default_prefix);
+
+    addr.u16[4] = UIP_HTONS(0x0201);
+    addr.u16[5] = UIP_HTONS(0x0001);
+    addr.u16[6] = UIP_HTONS(0x0001);
+    addr.u16[7] = UIP_HTONS(0x0001);
+
+    {
+      static unsigned int message_number;
+      char buf[20];
+
+      printf("Sending unicast to ");
+      uip_debug_ipaddr_print(&addr);
+      printf("\n");
+      sprintf(buf, "Message %d", message_number);
+      message_number++;
+      simple_udp_sendto(&unicast_connection, buf, strlen(buf) + 1, &addr);
+    }
   }
+
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/

@@ -57,7 +57,8 @@ static struct simple_udp_connection unicast_connection;
 
 /*---------------------------------------------------------------------------*/
 PROCESS(unicast_receiver_process, "Unicast receiver example process");
-AUTOSTART_PROCESSES(&unicast_receiver_process);
+PROCESS(contiki_ng_br, "Contiki-NG Border Router");
+AUTOSTART_PROCESSES(&unicast_receiver_process,&contiki_ng_br);
 /*---------------------------------------------------------------------------*/
 static void
 receiver(struct simple_udp_connection *c,
@@ -81,15 +82,33 @@ receiver(struct simple_udp_connection *c,
 
 PROCESS_THREAD(unicast_receiver_process, ev, data)
 {
+  static struct etimer et;
+
   PROCESS_BEGIN();
 
   NETSTACK_ROUTING.root_start();
 
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
+  etimer_set(&et, CLOCK_SECOND);
   while(1) {
-    PROCESS_WAIT_EVENT();
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+    etimer_reset(&et);
   }
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
+
+PROCESS_THREAD(contiki_ng_br, ev, data)
+{
+  PROCESS_BEGIN();
+
+  #if BORDER_ROUTER_CONF_WEBSERVER
+  PROCESS_NAME(webserver_nogui_process);
+  process_start(&webserver_nogui_process, NULL);
+  #endif /* BORDER_ROUTER_CONF_WEBSERVER */
+
+  LOG_INFO("Contiki-NG Border Router started\n");
+
+  PROCESS_END();
+}

@@ -37,13 +37,15 @@
 #define LOG_LEVEL LOG_LEVEL_INFO
 
 #define WITH_SERVER_REPLY  1
-#define UDP_CLIENT_PORT	8765
-#define UDP_SERVER_PORT	5678
+#define UDP_CLIENT_PORT	1234
+#define UDP_SERVER_PORT	1234
 
 static struct simple_udp_connection udp_conn;
 
+
 PROCESS(udp_server_process, "UDP server");
-AUTOSTART_PROCESSES(&udp_server_process);
+PROCESS(contiki_ng_br, "Contiki-NG Border Router");
+AUTOSTART_PROCESSES(&udp_server_process,&contiki_ng_br);
 /*---------------------------------------------------------------------------*/
 static void
 udp_rx_callback(struct simple_udp_connection *c,
@@ -78,3 +80,16 @@ PROCESS_THREAD(udp_server_process, ev, data)
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
+PROCESS_THREAD(contiki_ng_br, ev, data)
+{
+  PROCESS_BEGIN();
+
+  #if BORDER_ROUTER_CONF_WEBSERVER
+  PROCESS_NAME(webserver_nogui_process);
+  process_start(&webserver_nogui_process, NULL);
+  #endif /* BORDER_ROUTER_CONF_WEBSERVER */
+
+  LOG_INFO("Contiki-NG Border Router started\n");
+
+  PROCESS_END();
+}

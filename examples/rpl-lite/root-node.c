@@ -35,7 +35,7 @@
 #include "net/ipv6/uip.h"
 #include "net/ipv6/uip-ds6.h"
 #include "net/ipv6/uip-debug.h"
-#include "net/netstack.h"
+
 #include "simple-udp.h"
 
 #include "net/routing/routing.h"
@@ -68,17 +68,20 @@ receiver(struct simple_udp_connection *c,
          const uint8_t *data,
          uint16_t datalen)
 {
-  LOG_INFO("Received request '%.*s' from ", datalen, (char *) data);
-  LOG_INFO_6ADDR(sender_addr);
-  LOG_INFO_("\n");
   printf("Data received from ");
   uip_debug_ipaddr_print(sender_addr);
   printf(" on port %d from port %d with length %d: '%s'\n",
          receiver_port, sender_port, datalen, data);
-
+  LOG_INFO("Received request '%.*s' from ", datalen, (char *) data);
+  LOG_INFO_6ADDR(sender_addr);
+  LOG_INFO_("\n");
+  #if WITH_SERVER_REPLY
+  /* send back the same string to the client as an echo reply */
+  LOG_INFO("Sending response.\n");
+  simple_udp_sendto(&udp_conn, data, datalen, sender_addr);
+  #endif /* WITH_SERVER_REPLY */
 }
 /*---------------------------------------------------------------------------*/
-
 PROCESS_THREAD(unicast_receiver_process, ev, data)
 {
   PROCESS_BEGIN();
@@ -87,6 +90,7 @@ PROCESS_THREAD(unicast_receiver_process, ev, data)
 
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
+
   while(1) {
     PROCESS_WAIT_EVENT();
   }

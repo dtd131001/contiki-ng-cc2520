@@ -27,37 +27,30 @@
  * SUCH DAMAGE.
  */
 
-
 #include "contiki.h"
 #include "lib/random.h"
 #include "sys/ctimer.h"
 #include "sys/etimer.h"
 #include "net/ipv6/uip.h"
 #include "net/ipv6/uip-ds6.h"
+#include "net/ipv6/uip-ds6-route.h"
 #include "net/ipv6/uip-debug.h"
-#include "net/netstack.h"
+
 #include "simple-udp.h"
 
 #include "net/routing/routing.h"
+#include "dev/leds.h"
 
 #include <stdio.h>
 #include <string.h>
 
-#include "sys/log.h"
-#define LOG_MODULE "App"
-#define LOG_LEVEL LOG_LEVEL_INFO
-
 #define UDP_PORT 1234
-#define SERVICE_ID 190
-
-#define SEND_INTERVAL		(10 * CLOCK_SECOND)
-#define SEND_TIME		(random_rand() % (SEND_INTERVAL))
 
 static struct simple_udp_connection unicast_connection;
 
 /*---------------------------------------------------------------------------*/
-PROCESS(unicast_receiver_process, "Unicast receiver example process");
-AUTOSTART_PROCESSES(&unicast_receiver_process);
+PROCESS(receiver_node_process, "Receiver node");
+AUTOSTART_PROCESSES(&receiver_node_process);
 /*---------------------------------------------------------------------------*/
 static void
 receiver(struct simple_udp_connection *c,
@@ -68,27 +61,52 @@ receiver(struct simple_udp_connection *c,
          const uint8_t *data,
          uint16_t datalen)
 {
-  LOG_INFO("Received request '%.*s' from ", datalen, (char *) data);
-  LOG_INFO_6ADDR(sender_addr);
-  LOG_INFO_("\n");
   printf("Data received from ");
   uip_debug_ipaddr_print(sender_addr);
   printf(" on port %d from port %d with length %d: '%s'\n",
          receiver_port, sender_port, datalen, data);
-
 }
 /*---------------------------------------------------------------------------*/
-
-PROCESS_THREAD(unicast_receiver_process, ev, data)
+static uip_ipaddr_t *
+set_global_address(void)
 {
+  static uip_ipaddr_t ipaddr;
+  int i;
+  uint8_t state;
+  const uip_ipaddr_t *default_prefix = uip_ds6_default_prefix();
+
+  uip_ip6addr_copy(&ipaddr, default_prefix);
+  uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
+  uip_ds6_addr_add(&ipaddr, 0, ADDR_AUTOCONF);
+
+  printf("IPv6 addresses: ");
+  for(i = 0; i < UIP_DS6_ADDR_NB; i++) {
+    state = uip_ds6_if.addr_list[i].state;
+    if(uip_ds6_if.addr_list[i].isused &&
+       (state == ADDR_TENTATIVE || state == ADDR_PREFERRED)) {
+      uip_debug_ipaddr_print(&uip_ds6_if.addr_list[i].ipaddr);
+      printf("\n");
+    }
+  }
+
+  return &ipaddr;
+}
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(receiver_node_process, ev, data)
+{
+  static struct etimer et;
+
   PROCESS_BEGIN();
 
-  NETSTACK_ROUTING.root_start();
+  set_global_address();
 
   simple_udp_register(&unicast_connection, UDP_PORT,
                       NULL, UDP_PORT, receiver);
+
+  etimer_set(&et, CLOCK_SECOND);
   while(1) {
-    PROCESS_WAIT_EVENT();
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+    etimer_reset(&et);
   }
   PROCESS_END();
 }

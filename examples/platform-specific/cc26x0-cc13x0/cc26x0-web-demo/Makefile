@@ -1,7 +1,7 @@
 CONTIKI_PROJECT = cc26x0-web-demo
 all: $(CONTIKI_PROJECT)
 
-PLATFORMS_ONLY = cc26x0-cc13x0
+#PLATFORMS_ONLY = cc26x0-cc13x0
 
 MODULES_REL += ./resources
 

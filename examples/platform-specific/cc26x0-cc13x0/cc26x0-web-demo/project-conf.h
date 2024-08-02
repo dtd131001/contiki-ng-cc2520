@@ -41,9 +41,9 @@
 #define UIP_CONF_TCP 1
 
 /* Enable/Disable Components of this Demo */
-#define CC26XX_WEB_DEMO_CONF_MQTT_CLIENT      1
+#define CC26XX_WEB_DEMO_CONF_MQTT_CLIENT      0
 #define CC26XX_WEB_DEMO_CONF_6LBR_CLIENT      ROUTING_CONF_RPL_CLASSIC
-#define CC26XX_WEB_DEMO_CONF_COAP_SERVER      1
+#define CC26XX_WEB_DEMO_CONF_COAP_SERVER      0
 #define CC26XX_WEB_DEMO_CONF_NET_UART         1
 
 /*
@@ -51,7 +51,7 @@
  * connected to DIO23
  * Enable/Disable DIO23 ADC reading by setting CC26XX_WEB_DEMO_CONF_ADC_DEMO
  */
-#define CC26XX_WEB_DEMO_CONF_ADC_DEMO         0
+#define CC26XX_WEB_DEMO_CONF_ADC_DEMO         1
 /*---------------------------------------------------------------------------*/
 /*
  * Change to 1 if you are using an older CC2650 Sensortag (look for Rev: 1.2

@@ -1,8 +1,5 @@
-CONTIKI_PROJECT = hello-world
+CONTIKI_PROJECT = udp-client
 all: $(CONTIKI_PROJECT)
-
-CONTIKI = ../..
-
 MODULES += os/services/shell
-
+CONTIKI=../..
 include $(CONTIKI)/Makefile.include

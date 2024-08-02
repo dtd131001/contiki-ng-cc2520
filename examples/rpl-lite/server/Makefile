@@ -1,4 +1,4 @@
-all: dis-sender sender-node receiver-node root-node
+all: root-node
 CONTIKI=../../..
 
 # Include RPL BR module
@@ -7,6 +7,6 @@ MODULES += $(CONTIKI_NG_SERVICES_DIR)/rpl-border-router
 # Include webserver module
 MODULES_REL += webserver
 
-MODULES += os/services/shell
+#MODULES += os/services/shell
 
 include $(CONTIKI)/Makefile.include
